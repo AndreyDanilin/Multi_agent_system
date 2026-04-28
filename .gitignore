@@ -33,6 +33,10 @@ ENV/
 *.swo
 *~
 
+# Local agent/worktree scratch
+.superpowers/
+.worktrees/
+
 # Environment variables
 .env
 .env.local
