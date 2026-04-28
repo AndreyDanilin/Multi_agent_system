@@ -1,0 +1,59 @@
+{
+  "attribution": {
+    "dataset": "galileo-ai/ragbench",
+    "subset": "techqa",
+    "license": "cc-by-4.0",
+    "url": "https://huggingface.co/datasets/galileo-ai/ragbench",
+    "note": "Small hand-curated fixture shaped after RAGBench techqa fields for deterministic offline tests."
+  },
+  "documents": [
+    {
+      "document_id": "techqa-dns-vpn",
+      "title": "DNS lookup failures after VPN connection",
+      "text": "When DNS lookup fails after connecting to a VPN, first check whether the VPN client replaced the system DNS servers. Flush the local DNS cache, renew the network adapter, and verify that split tunnel DNS routes are installed. If internal host names resolve but public domains fail, inspect the VPN DNS suffix and fallback resolver policy.",
+      "source": "galileo-ai/ragbench/techqa",
+      "answer": "Check VPN-provided DNS servers, flush DNS cache, renew the adapter, and verify split tunnel DNS routes and suffix policy."
+    },
+    {
+      "document_id": "techqa-cert-renewal",
+      "title": "Certificate renewal troubleshooting",
+      "text": "A certificate renewal job can fail when the service account lacks permission to write the renewed certificate or when the ACME challenge cannot be reached from the public internet. Confirm that the DNS challenge record propagated, the web challenge path returns HTTP 200, and the certificate store accepts the new private key.",
+      "source": "galileo-ai/ragbench/techqa",
+      "answer": "Check service account permissions, ACME challenge reachability, DNS propagation, and certificate store key access."
+    },
+    {
+      "document_id": "techqa-ci-cache",
+      "title": "CI dependency cache misses",
+      "text": "Repeated CI cache misses usually mean the cache key includes a changing value such as a timestamp, build number, or generated lockfile. Use the dependency lockfile hash as the primary key, add a stable restore prefix, and make sure the cache path matches the package manager download directory.",
+      "source": "galileo-ai/ragbench/techqa",
+      "answer": "Use a stable lockfile-based cache key, restore prefixes, and the correct package manager cache path."
+    },
+    {
+      "document_id": "techqa-db-pool",
+      "title": "Database connection pool exhaustion",
+      "text": "Database connection pool exhaustion appears as request latency spikes, timeout errors, and many sessions waiting for idle connections. Inspect pool size, transaction duration, unclosed cursors, and retry storms. Prefer bounded concurrency and short transactions before increasing the database connection limit.",
+      "source": "galileo-ai/ragbench/techqa",
+      "answer": "Inspect pool size, transaction length, leaked cursors, retry storms, and bounded concurrency before raising limits."
+    }
+  ],
+  "questions": [
+    {
+      "question_id": "q-dns-vpn",
+      "question": "DNS lookup fails after I connect to the VPN. What should I check?",
+      "expected_document_id": "techqa-dns-vpn",
+      "reference_answer": "Check VPN DNS servers, flush DNS cache, renew the adapter, and verify split tunnel DNS routes."
+    },
+    {
+      "question_id": "q-cert-renewal",
+      "question": "Why would an automated certificate renewal fail during ACME validation?",
+      "expected_document_id": "techqa-cert-renewal",
+      "reference_answer": "The account may lack write permission, the ACME challenge may be unreachable, or DNS propagation may be incomplete."
+    },
+    {
+      "question_id": "q-ci-cache",
+      "question": "Our CI dependency cache misses on every build. How do we fix it?",
+      "expected_document_id": "techqa-ci-cache",
+      "reference_answer": "Use a stable lockfile hash cache key, restore prefixes, and point at the package manager cache directory."
+    }
+  ]
+}

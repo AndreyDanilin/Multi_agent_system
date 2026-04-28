@@ -33,6 +33,10 @@ ENV/
 *.swo
 *~
 
+# Local agent/worktree scratch
+.superpowers/
+.worktrees/
+
 # Environment variables
 .env
 .env.local
@@ -40,6 +44,11 @@ ENV/
 # Logs
 *.log
 logs/
+
+# Local data and indexes
+.cache/
+data/cache/
+*.lance/
 
 # OS
 .DS_Store
