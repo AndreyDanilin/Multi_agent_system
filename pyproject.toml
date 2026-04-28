@@ -1,0 +1,75 @@
+[project]
+name = "agentic-research-copilot"
+version = "0.1.0"
+description = "A modern multi-agent research copilot with RAG as a tool, hybrid retrieval and evaluation."
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [{ name = "Andrey Danilin" }]
+license = { file = "LICENSE" }
+dependencies = [
+  "pydantic>=2.7",
+]
+
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project.optional-dependencies]
+api = [
+  "litestar>=2.13",
+]
+graph = [
+  "langgraph>=0.2",
+]
+retrieval = [
+  "lancedb>=0.17",
+]
+ui = [
+  "streamlit>=1.40",
+]
+models = [
+  "sentence-transformers>=3.0",
+]
+hf = [
+  "datasets>=3.0",
+]
+all = [
+  "langgraph>=0.2",
+  "litestar>=2.13",
+  "lancedb>=0.17",
+  "streamlit>=1.40",
+  "sentence-transformers>=3.0",
+  "datasets>=3.0",
+]
+test = [
+  "pytest>=8.0",
+  "pytest-asyncio>=0.23",
+]
+dev = [
+  "pytest>=8.0",
+  "pytest-asyncio>=0.23",
+  "ruff>=0.8",
+]
+
+[project.scripts]
+research-copilot = "research_copilot.cli:main"
+
+[tool.uv]
+package = true
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+research_copilot = ["data/*.json"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]

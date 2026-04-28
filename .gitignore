@@ -45,6 +45,11 @@ ENV/
 *.log
 logs/
 
+# Local data and indexes
+.cache/
+data/cache/
+*.lance/
+
 # OS
 .DS_Store
 Thumbs.db
