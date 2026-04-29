@@ -9,15 +9,22 @@ from __future__ import annotations
 
 import hashlib
 import math
-from typing import Protocol
+from collections.abc import Callable
+from typing import Any, Protocol
 
 from .tokenization import tokenize
+
+BGE_SMALL_EN_V15 = "BAAI/bge-small-en-v1.5"
+BGE_QUERY_INSTRUCTION = "Represent this sentence for searching relevant passages:"
 
 
 class EmbeddingModel(Protocol):
     dimensions: int
 
     def embed(self, text: str) -> list[float]:
+        ...
+
+    def embed_query(self, text: str) -> list[float]:
         ...
 
 
@@ -45,6 +52,48 @@ class DeterministicEmbeddingModel:
         if norm == 0:
             return vector
         return [value / norm for value in vector]
+
+    def embed_query(self, text: str) -> list[float]:
+        return self.embed(text)
+
+
+class SentenceTransformerEmbeddingModel:
+    """Sentence Transformers embedding backend using BGE small v1.5 by default."""
+
+    def __init__(
+        self,
+        model_name: str = BGE_SMALL_EN_V15,
+        *,
+        dimensions: int = 384,
+        model_factory: Callable[[str], Any] | None = None,
+    ) -> None:
+        self.model_name = model_name
+        self.dimensions = dimensions
+        self._model_factory = model_factory
+        self._model: Any | None = None
+
+    @property
+    def model(self) -> Any:
+        if self._model is None:
+            if self._model_factory is None:
+                from sentence_transformers import SentenceTransformer
+
+                self._model_factory = SentenceTransformer
+            self._model = self._model_factory(self.model_name)
+        return self._model
+
+    def embed(self, text: str) -> list[float]:
+        return self._encode(text)
+
+    def embed_query(self, text: str) -> list[float]:
+        return self._encode(f"{BGE_QUERY_INSTRUCTION} {text}")
+
+    def _encode(self, text: str) -> list[float]:
+        encoded = self.model.encode([text], normalize_embeddings=True)
+        vector = encoded[0]
+        if hasattr(vector, "tolist"):
+            return vector.tolist()
+        return [float(value) for value in vector]
 
 
 def cosine_similarity(left: list[float], right: list[float]) -> float:

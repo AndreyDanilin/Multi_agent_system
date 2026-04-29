@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from datetime import UTC, datetime
 from typing import Any, Literal
 from uuid import uuid4
@@ -61,21 +62,45 @@ class AgentEvent(BaseModel):
     timestamp: datetime = Field(default_factory=utc_now)
 
 
-class ToolCall(BaseModel):
-    """A structured tool invocation requested by an agent."""
+class FunctionCall(BaseModel):
+    """OpenAI Responses-style function call item requested by an agent."""
 
+    type: Literal["function_call"] = "function_call"
     call_id: str = Field(default_factory=lambda: str(uuid4()))
-    tool_name: str
-    arguments: dict[str, Any] = Field(default_factory=dict)
+    name: str
+    arguments: str = "{}"
+
+    @classmethod
+    def from_arguments(cls, *, name: str, arguments: dict[str, Any]) -> FunctionCall:
+        return cls(name=name, arguments=json.dumps(arguments, separators=(",", ":")))
+
+    def parsed_arguments(self) -> dict[str, Any]:
+        return json.loads(self.arguments or "{}")
 
 
-class ToolResult(BaseModel):
-    """A structured tool result returned to the graph."""
+class FunctionCallOutput(BaseModel):
+    """OpenAI Responses-style function output item returned to the graph."""
 
-    tool_name: str
-    status: Literal["ok", "error"]
-    output: dict[str, Any] = Field(default_factory=dict)
-    error: str | None = None
+    type: Literal["function_call_output"] = "function_call_output"
+    call_id: str
+    output: str
+
+    @classmethod
+    def from_output(cls, *, call_id: str, output: dict[str, Any]) -> FunctionCallOutput:
+        return cls(call_id=call_id, output=json.dumps(output, separators=(",", ":"), default=str))
+
+    def parsed_output(self) -> dict[str, Any]:
+        return json.loads(self.output or "{}")
+
+
+class FunctionTool(BaseModel):
+    """OpenAI Responses-style function tool declaration."""
+
+    type: Literal["function"] = "function"
+    name: str
+    description: str
+    parameters: dict[str, Any]
+    strict: bool = True
 
 
 class AgentState(BaseModel):
@@ -91,8 +116,8 @@ class AgentState(BaseModel):
     assessment: Literal["complete", "needs_evidence", "failed"] | None = None
     confidence: float = 0.0
     events: list[AgentEvent] = Field(default_factory=list)
-    tool_calls: list[ToolCall] = Field(default_factory=list)
-    tool_results: list[ToolResult] = Field(default_factory=list)
+    function_calls: list[FunctionCall] = Field(default_factory=list)
+    function_call_outputs: list[FunctionCallOutput] = Field(default_factory=list)
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 

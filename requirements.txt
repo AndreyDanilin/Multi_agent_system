@@ -1,4 +1,6 @@
 pydantic>=2.7
+lancedb>=0.17
+sentence-transformers>=3.0
 langgraph>=0.2
 litestar>=2.13
 lancedb>=0.17

@@ -4,13 +4,12 @@ from research_copilot.data.fixtures import (
 )
 from research_copilot.evaluation import EvaluationRunner
 from research_copilot.retrieval.embeddings import DeterministicEmbeddingModel
-from research_copilot.retrieval.repository import LanceDBRepository
+from research_copilot.retrieval.repository import InMemoryRetrievalRepository
 from research_copilot.retrieval.service import RetrievalService
 
 
-def test_evaluation_reports_retrieval_quality_metrics(tmp_path):
-    repository = LanceDBRepository(
-        path=tmp_path / "lancedb",
+def test_evaluation_reports_retrieval_quality_metrics():
+    repository = InMemoryRetrievalRepository(
         embedding_model=DeterministicEmbeddingModel(dimensions=64),
     )
     retrieval = RetrievalService(repository=repository)
