@@ -12,7 +12,6 @@ from research_copilot.data.fixtures import (
 from research_copilot.evaluation import EvaluationRunner
 from research_copilot.graph import ResearchCopilotGraph
 from research_copilot.retrieval import (
-    DeterministicEmbeddingModel,
     LanceDBRepository,
     RetrievalService,
 )
@@ -33,7 +32,6 @@ class ResearchCopilotService:
     ) -> ResearchCopilotService:
         repository = LanceDBRepository(
             path=Path(data_dir) / "lancedb",
-            embedding_model=DeterministicEmbeddingModel(dimensions=128),
         )
         return cls(retrieval_service=RetrievalService(repository=repository))
 

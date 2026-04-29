@@ -3,9 +3,10 @@ from research_copilot.types import (
     AgentState,
     AnswerResponse,
     Citation,
+    FunctionCall,
+    FunctionCallOutput,
+    FunctionTool,
     RetrievedChunk,
-    ToolCall,
-    ToolResult,
 )
 
 
@@ -42,13 +43,41 @@ def test_answer_response_exposes_citations_and_trace():
     assert response.retrieval_mode == "hybrid_rerank"
 
 
-def test_agent_state_tracks_tool_calls_and_results():
+def test_agent_state_tracks_openai_function_calls_and_outputs():
     state = AgentState(question="How do I restore DNS resolution?")
-    call = ToolCall(tool_name="rag_search", arguments={"query": state.question})
-    result = ToolResult(tool_name="rag_search", status="ok", output={"chunks": 2})
+    call = FunctionCall(name="rag_search", arguments='{"query":"How do I restore DNS resolution?"}')
+    output = FunctionCallOutput(call_id=call.call_id, output='{"chunks":2}')
 
-    state.tool_calls.append(call)
-    state.tool_results.append(result)
+    state.function_calls.append(call)
+    state.function_call_outputs.append(output)
 
-    assert state.tool_calls[0].tool_name == "rag_search"
-    assert state.tool_results[0].output["chunks"] == 2
+    assert state.function_calls[0].model_dump()["type"] == "function_call"
+    assert state.function_calls[0].name == "rag_search"
+    assert state.function_call_outputs[0].model_dump()["type"] == "function_call_output"
+    assert state.function_call_outputs[0].call_id == call.call_id
+
+
+def test_function_tool_schema_uses_strict_openai_shape():
+    tool = FunctionTool(
+        name="rag_search",
+        description="Search indexed technical documentation.",
+        parameters={
+            "type": "object",
+            "properties": {"query": {"type": "string"}},
+            "required": ["query"],
+            "additionalProperties": False,
+        },
+    )
+
+    assert tool.model_dump() == {
+        "type": "function",
+        "name": "rag_search",
+        "description": "Search indexed technical documentation.",
+        "parameters": {
+            "type": "object",
+            "properties": {"query": {"type": "string"}},
+            "required": ["query"],
+            "additionalProperties": False,
+        },
+        "strict": True,
+    }

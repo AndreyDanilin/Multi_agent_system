@@ -12,9 +12,10 @@ from .types import (
     AnswerResponse,
     Citation,
     EvaluationReport,
+    FunctionCall,
+    FunctionCallOutput,
+    FunctionTool,
     RetrievedChunk,
-    ToolCall,
-    ToolResult,
 )
 
 __all__ = [
@@ -23,9 +24,10 @@ __all__ = [
     "AnswerResponse",
     "Citation",
     "EvaluationReport",
+    "FunctionCall",
+    "FunctionCallOutput",
+    "FunctionTool",
     "ResearchCopilotGraph",
     "ResearchCopilotService",
     "RetrievedChunk",
-    "ToolCall",
-    "ToolResult",
 ]

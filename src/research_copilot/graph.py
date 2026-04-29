@@ -4,7 +4,12 @@ from __future__ import annotations
 
 from typing import Any
 
-from research_copilot.models import DeterministicLLM, LLMAdapter
+from research_copilot.agents import AGENT_SEQUENCE
+from research_copilot.models import (
+    DEFAULT_RESPONSE_MODEL,
+    DeterministicOpenAIResponsesClient,
+    OpenAIResponsesClient,
+)
 from research_copilot.retrieval.service import RetrievalService
 from research_copilot.tools import ToolRegistry
 from research_copilot.types import (
@@ -12,9 +17,9 @@ from research_copilot.types import (
     AgentState,
     AnswerResponse,
     Citation,
+    FunctionCall,
+    FunctionCallOutput,
     RetrievalMode,
-    ToolCall,
-    ToolResult,
 )
 
 
@@ -30,12 +35,40 @@ class ResearchCopilotGraph:
         self,
         retrieval_service: RetrievalService,
         *,
-        llm: LLMAdapter | None = None,
+        responses_client: OpenAIResponsesClient | None = None,
+        model: str = DEFAULT_RESPONSE_MODEL,
     ) -> None:
         self.retrieval_service = retrieval_service
-        self.llm = llm or DeterministicLLM()
+        self.responses_client = responses_client or DeterministicOpenAIResponsesClient()
+        self.model = model
         self.tools = ToolRegistry()
-        self.tools.register("rag_search", self._rag_search_tool)
+        self.tools.register(
+            "rag_search",
+            self._rag_search_tool,
+            description="Search indexed technical documentation and return cited chunks.",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "Natural-language retrieval query.",
+                    },
+                    "mode": {
+                        "type": "string",
+                        "enum": ["lexical", "vector", "hybrid", "hybrid_rerank"],
+                        "description": "Retrieval strategy to use.",
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 20,
+                        "description": "Maximum number of chunks to return.",
+                    },
+                },
+                "required": ["query", "mode", "limit"],
+                "additionalProperties": False,
+            },
+        )
         self.langgraph_available = self._detect_langgraph()
         self._compiled_graph = self._compile_langgraph()
 
@@ -67,8 +100,12 @@ class ResearchCopilotGraph:
             retrieval_mode=state.retrieval_mode,
             metadata={
                 "assessment": state.assessment,
-                "tool_calls": [call.model_dump(mode="json") for call in state.tool_calls],
-                "tool_results": [result.model_dump(mode="json") for result in state.tool_results],
+                "function_calls": [
+                    call.model_dump(mode="json") for call in state.function_calls
+                ],
+                "function_call_outputs": [
+                    output.model_dump(mode="json") for output in state.function_call_outputs
+                ],
                 **state.metadata,
             },
         )
@@ -79,15 +116,7 @@ class ResearchCopilotGraph:
         return state
 
     def _node_sequence(self):
-        return (
-            self._router,
-            self._planner,
-            self._tool_executor,
-            self._rag_tool,
-            self._answer_synthesizer,
-            self._critic,
-            self._finalizer,
-        )
+        return tuple(getattr(self, f"_{name}") for name in AGENT_SEQUENCE)
 
     def _router(self, state: AgentState) -> AgentState:
         state.route = "research"
@@ -102,13 +131,13 @@ class ResearchCopilotGraph:
             "Synthesize a grounded answer",
             "Verify that citations support the answer",
         ]
-        state.tool_calls.append(
-            ToolCall(
-                tool_name="rag_search",
+        state.function_calls.append(
+            FunctionCall.from_arguments(
+                name="rag_search",
                 arguments={
                     "query": state.question,
                     "mode": state.retrieval_mode,
-                    "limit": state.metadata.get("limit", 5),
+                    "limit": int(state.metadata.get("limit", 5)),
                 },
             )
         )
@@ -120,16 +149,26 @@ class ResearchCopilotGraph:
             AgentEvent(
                 node="tool_executor",
                 message="Prepared tool execution",
-                metadata={"tools": self.tools.names},
+                metadata={
+                    "tools": self.tools.names,
+                    "schemas": [schema.model_dump(mode="json") for schema in self.tools.schemas],
+                },
             )
         )
         return state
 
     def _rag_tool(self, state: AgentState) -> AgentState:
-        call = state.tool_calls[-1]
-        output = self.tools.call(call.tool_name, **call.arguments)
+        call = state.function_calls[-1]
+        arguments = call.parsed_arguments()
+        output = self.tools.call(call.name, **arguments)
         state.retrieved_chunks = output["chunks"]
-        state.tool_results.append(ToolResult(tool_name=call.tool_name, status="ok", output=output))
+        serializable_output = {
+            "chunks": [chunk.model_dump(mode="json") for chunk in output["chunks"]],
+            "latency_ms": output["latency_ms"],
+        }
+        state.function_call_outputs.append(
+            FunctionCallOutput.from_output(call_id=call.call_id, output=serializable_output)
+        )
         state.events.append(
             AgentEvent(
                 node="rag_tool",
@@ -145,7 +184,19 @@ class ResearchCopilotGraph:
 
     def _answer_synthesizer(self, state: AgentState) -> AgentState:
         contexts = [chunk.text for chunk in state.retrieved_chunks[:3]]
-        state.answer = self.llm.answer(state.question, contexts)
+        response = self.responses_client.create(
+            model=self.model,
+            input=[
+                {"role": "user", "content": state.question},
+                *[
+                    {"role": "developer", "content": context}
+                    for context in contexts
+                ],
+            ],
+            tools=self.tools.schemas,
+            instructions="Answer only from retrieved context and preserve citation grounding.",
+        )
+        state.answer = str(response.get("output_text", ""))
         state.citations = [self._citation_from_chunk(chunk) for chunk in state.retrieved_chunks[:3]]
         if state.citations:
             state.confidence = round(
@@ -225,15 +276,7 @@ class ResearchCopilotGraph:
             return None
 
         workflow = StateGraph(dict)
-        nodes = {
-            "router": self._router,
-            "planner": self._planner,
-            "tool_executor": self._tool_executor,
-            "rag_tool": self._rag_tool,
-            "answer_synthesizer": self._answer_synthesizer,
-            "critic": self._critic,
-            "finalizer": self._finalizer,
-        }
+        nodes = {name: getattr(self, f"_{name}") for name in AGENT_SEQUENCE}
 
         def wrap(node):
             def invoke(payload):

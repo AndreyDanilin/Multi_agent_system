@@ -7,7 +7,9 @@ requires-python = ">=3.11"
 authors = [{ name = "Andrey Danilin" }]
 license = { file = "LICENSE" }
 dependencies = [
+  "lancedb>=0.17",
   "pydantic>=2.7",
+  "sentence-transformers>=3.0",
 ]
 
 [build-system]
@@ -21,14 +23,8 @@ api = [
 graph = [
   "langgraph>=0.2",
 ]
-retrieval = [
-  "lancedb>=0.17",
-]
 ui = [
   "streamlit>=1.40",
-]
-models = [
-  "sentence-transformers>=3.0",
 ]
 hf = [
   "datasets>=3.0",
@@ -36,9 +32,7 @@ hf = [
 all = [
   "langgraph>=0.2",
   "litestar>=2.13",
-  "lancedb>=0.17",
   "streamlit>=1.40",
-  "sentence-transformers>=3.0",
   "datasets>=3.0",
 ]
 test = [

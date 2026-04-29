@@ -1,5 +1,9 @@
-"""Provider-neutral model adapters."""
+"""OpenAI Responses-style model clients."""
 
-from .base import DeterministicLLM, LLMAdapter
+from .base import DEFAULT_RESPONSE_MODEL, DeterministicOpenAIResponsesClient, OpenAIResponsesClient
 
-__all__ = ["DeterministicLLM", "LLMAdapter"]
+__all__ = [
+    "DEFAULT_RESPONSE_MODEL",
+    "DeterministicOpenAIResponsesClient",
+    "OpenAIResponsesClient",
+]
